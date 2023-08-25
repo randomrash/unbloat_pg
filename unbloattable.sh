@@ -7,9 +7,9 @@ PSQL=/usr/bin/psql
 DB_USER=postgres
 DB_NAME=postgres
 
-for DB in $(psql -h localhost -U postgres -qtAX -c "SELECT datname FROM pg_database WHERE datname NOT IN ('template0', 'template1')"); do
-
-  psql -U postgres -d $DB -c "CREATE EXTENSION IF NOT EXISTS pgstattuple"
+for DBA in $(psql -h localhost -U postgres -qtAX -c "SELECT datname FROM pg_database WHERE datname NOT IN ('template0', 'template1')"); do
+  echo $DBA
+  psql -U postgres -d $DBA -c "CREATE EXTENSION IF NOT EXISTS pgstattuple"
 done
 
 $PSQL \
