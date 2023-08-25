@@ -33,6 +33,7 @@ if [[ $code -ne 0 ]] | [[ ! -z "$gr" ]]; then
     echo "У тебя ошибочка"
 else
 echo "========================================================" $DB "========================================================="
+# Автор используемого в скрипте запроса для поиска bloat >> https://github.com/pgexperts/pgx_scripts/blob/master/bloat/table_bloat_check.sql
 $PSQL \
     -X \
     -U $DB_USER \
