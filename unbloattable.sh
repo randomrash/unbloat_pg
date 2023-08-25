@@ -2,18 +2,37 @@
 
 set -e
 set -u
-
+NOW=$(date +"%m %d %Y %H:%M:%S")
 PSQL=/usr/bin/psql
-
 DB_USER=postgres
 DB_NAME=postgres
 
-gr=$(ps aux | grep -e ./pgcompacttable | tr '\n' ' ' | awk '{print $2}')
-code=$(psql -U $1 -h 127.0.0.1 -qtAX -c 'SELECT pg_is_in_recovery()::int;')
+for DB in $(psql -h localhost -U postgres -qtAX -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1')"); do
+
+  psql -U postgres -d $DB -c "CREATE EXTENSION IF NOT EXISTS pgstattuple"
+done
+
+$PSQL \
+    -X \
+    -U $DB_USER \
+    -c "select * from pg_database where datname not in ('template1', 'template0')"\
+    --single-transaction \
+    --set AUTOCOMMIT=off \
+    --set ON_ERROR_STOP=on \
+    --no-align \
+    -t \
+    --field-separator ' ' \
+    --quiet \
+    -d postgres | while read -a Record ; do
+    DB=${Record[1]}
+
+gr=$(ps -ef | grep ./pgcompacttable | grep -v grep |awk '{print $2}')
+code=$(psql -U postgres -h 127.0.0.1 -qtAX -c 'SELECT pg_is_in_recovery()::int;')
 if [[ $code -ne 0 ]] | [[ ! -z "$gr" ]]; then
     exit 1
+    echo "У тебя ошибочка"
 else
-
+echo "========================================================" $DB "========================================================="
 $PSQL \
     -X \
     -U $DB_USER \
@@ -139,7 +158,7 @@ ORDER BY mb_bloat DESC" \
     -t \
     --field-separator ' ' \
     --quiet \
-    -d $DB_NAME | while read -a Record ; do
+    -d $DB | while read -a Record ; do
     d=${Record[0]}
     n=${Record[1]}
     t=${Record[2]}
@@ -148,13 +167,14 @@ ORDER BY mb_bloat DESC" \
     while [[ ! -z "$gre" ]] 
     do
           gre=$(ps -ef | grep ./pgcompacttable | grep -v grep |awk '{print $2}')
-          if [[ $gr -ne 0 ]]; then
+          if [[ $gre -ne 0 ]]; then
               echo "активность сплю 30 секунд"
               sleep 30
           fi
     done
-    ./pgcompacttable --dbname $d -n $n -t $t --verbose >>pgcompacttable_${d}_${n}_${t}.log 2>&1 &
+    ./pgcompacttable --dbname $d -n $n -t $t --verbose  # >> pgcompacttable${t}.log 2>&1 &
 
 sleep 1
 done
 fi
+done
